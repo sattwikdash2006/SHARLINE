@@ -654,12 +654,14 @@
     <section id="view-hub" class="view-active">
       <div class="hero">
         <h1 class="hero-title">SHARLINE<br><span class="gradient-text">Complete Verified Client Workstation.</span></h1>
-        <p style="color:var(--text-secondary); margin-bottom:1.75rem; font-size:1.05rem;">
+        <p style="color:var(--text-secondary); margin-bottom:1.25rem; font-size:1.05rem;">
           39 client-side tools running on pure hardware execution. Zero server storage, verified TF-IDF summarizers, rule-based NLP, and WebCrypto AES-GCM.
         </p>
 
+        <button class="action-btn" id="hero-hand-control" type="button" style="margin:0 auto 1.5rem;">🖐 Open Hand Gesture Control</button>
+
         <div class="search-filter-box">
-          <input type="text" id="tool-search-input" placeholder="🦇 Search any sorcery or tool (e.g. Vault, Network, OCR, PDF, Crop)...">
+          <input type="text" id="tool-search-input" placeholder="🦇 Search tools (e.g. Hand Gesture, Vault, Network, OCR, PDF)...">
         </div>
       </div>
 
@@ -3145,6 +3147,9 @@
       mount.innerHTML = '';
       tool.render(mount);
     }
+
+    // Direct launch buttons make Hand Gesture Control easy to find.
+    document.getElementById('hero-hand-control').addEventListener('click', () => openTool('hand-control'));
 
     document.getElementById('category-tabs').onclick = (e) => {
       if (!e.target.classList.contains('cat-btn')) return;
