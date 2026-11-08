@@ -45,6 +45,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-css.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- MediaPipe Hands: hand landmarks are processed locally in the browser -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 
   <style>
     /* ==================== HALLOWEEN CYBER-GOTHIC PALETTE ==================== */
@@ -610,6 +612,11 @@
       transition: border-color 0.2s ease;
     }
     .vault-record:hover { border-color: var(--border-highlight); }
+
+    #gesture-cursor { will-change: left, top; }
+    @media (max-width: 760px) {
+      #hg-video { aspect-ratio: 4/3 !important; }
+    }
   </style>
 </head>
 <body>
@@ -648,7 +655,7 @@
       <div class="hero">
         <h1 class="hero-title">SHARLINE<br><span class="gradient-text">Complete Verified Client Workstation.</span></h1>
         <p style="color:var(--text-secondary); margin-bottom:1.75rem; font-size:1.05rem;">
-          38 client-side tools running on pure hardware execution. Zero server storage, verified TF-IDF summarizers, rule-based NLP, and WebCrypto AES-GCM.
+          39 client-side tools running on pure hardware execution. Zero server storage, verified TF-IDF summarizers, rule-based NLP, and WebCrypto AES-GCM.
         </p>
 
         <div class="search-filter-box">
@@ -657,13 +664,13 @@
       </div>
 
       <nav class="category-nav" id="category-tabs">
-        <button class="cat-btn active" data-cat="all">All Sorceries (38)</button>
+        <button class="cat-btn active" data-cat="all">All Sorceries (39)</button>
         <button class="cat-btn" data-cat="ai" style="color:#fed7aa; font-weight:800;">🔮 Local Web NLP & AI (5)</button>
         <button class="cat-btn" data-cat="pdf">Grimoire PDFs (6)</button>
         <button class="cat-btn" data-cat="image">Phantasm Studio (6)</button>
         <button class="cat-btn" data-cat="writing">Dark Manuscripts (6)</button>
         <button class="cat-btn" data-cat="dev">Crypt Forge (7)</button>
-        <button class="cat-btn" data-cat="productivity">Security & Sigils (8)</button>
+        <button class="cat-btn" data-cat="productivity">Security & Sigils (9)</button>
       </nav>
 
       <div class="tool-grid" id="tools-directory"></div>
@@ -2699,7 +2706,313 @@
     };
 
     /* ==========================================================================
-       ★ MASTER REGISTRY (38 VERIFIED MODULES) ★
+       ★ CAMERA HAND GESTURE CONTROL ★
+       ========================================================================== */
+    function renderHandGestureControl(mount) {
+      SHARLINE.stopHandControl();
+      mount.innerHTML = `
+        <div class="tool-panel">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+            <div>
+              <h3 style="font-size:1.35rem; font-weight:900;">🖐️ Hand Gesture Control</h3>
+              <p style="color:var(--text-secondary); margin-top:5px;">Use your webcam hand movements as an on-page pointer and shortcut controller.</p>
+            </div>
+            <span id="hg-state-pill" class="ping-badge ping-med">● CAMERA OFF</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:minmax(0, 1.35fr) minmax(240px, 0.9fr); gap:18px; align-items:start;">
+            <div>
+              <div style="position:relative; overflow:hidden; border-radius:16px; border:1px solid var(--border-highlight); background:#000; min-height:220px;">
+                <video id="hg-video" autoplay playsinline muted style="display:block; width:100%; aspect-ratio:16/10; object-fit:cover; transform:scaleX(-1);"></video>
+                <div id="hg-camera-placeholder" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:24px; color:#fed7aa; background:linear-gradient(145deg,rgba(14,5,1,.88),rgba(38,12,3,.82));">
+                  <div><div style="font-size:2.3rem; margin-bottom:8px;">📷</div><b>Camera is off</b><p style="font-size:.85rem; margin-top:6px; color:var(--text-muted);">Press Start Camera and allow access when your browser asks.</p></div>
+                </div>
+              </div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+                <button class="action-btn" id="hg-start">▶ Start Camera</button>
+                <button class="action-btn-secondary" id="hg-stop" disabled>■ Stop Camera</button>
+              </div>
+              <p id="hg-status" role="status" aria-live="polite" style="color:var(--text-secondary); font-size:.88rem; margin-top:12px; min-height:22px;">Camera is off. Nothing is being captured.</p>
+            </div>
+
+            <div style="background:var(--bg-input); border:1px solid var(--border-subtle); border-radius:14px; padding:16px;">
+              <h4 style="font-weight:800; margin-bottom:12px; color:#ffaa55;">Gesture map</h4>
+              <div style="display:grid; gap:12px; font-size:.88rem; line-height:1.45;">
+                <div><b>☝️ Index finger</b><p style="color:var(--text-muted);">Move the on-page pointer.</p></div>
+                <div><b>🤏 Quick pinch</b><p style="color:var(--text-muted);">Left-click the control under the pointer.</p></div>
+                <div><b>✊ Fist</b><p style="color:var(--text-muted);">Send the Escape shortcut.</p></div>
+                <div><b>✌️ V sign</b><p style="color:var(--text-muted);">Scroll the page by moving your hand up or down.</p></div>
+                <div><b>🤏 Hold pinch for 0.7s</b><p style="color:var(--text-muted);">Activate the focused control like Enter.</p></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:18px; padding:14px 16px; border:1px solid rgba(245,158,11,.35); border-radius:12px; background:rgba(245,158,11,.07); color:#fed7aa; font-size:.84rem; line-height:1.6;">
+            <b>Privacy & browser limits:</b> The camera starts only after you press Start. Hand tracking runs in this tab; camera frames are not uploaded or saved by this feature. The hand pointer controls this webpage only—it cannot move your operating-system mouse or type into other apps. Browser restrictions also prevent general simulated typing; this feature supports page actions and shortcuts such as Enter and Escape. Use HTTPS or localhost, and press Stop Camera to disconnect the stream.
+          </div>
+        </div>
+      `;
+
+      const video = mount.querySelector('#hg-video');
+      const placeholder = mount.querySelector('#hg-camera-placeholder');
+      const startBtn = mount.querySelector('#hg-start');
+      const stopBtn = mount.querySelector('#hg-stop');
+      const status = mount.querySelector('#hg-status');
+      const statePill = mount.querySelector('#hg-state-pill');
+
+      const setStatus = (message) => { status.textContent = message; };
+      const setPill = (message, kind = 'ping-med') => {
+        statePill.className = `ping-badge ${kind}`;
+        statePill.textContent = message;
+      };
+
+      const activateAt = (x, y, key = 'click') => {
+        const rawTarget = document.elementFromPoint(x, y);
+        if (!rawTarget) return false;
+        const target = rawTarget.closest('button,a,input,select,textarea,label,[role="button"],[onclick],.tool-card,.cat-btn,.nav-tab-btn,.cmd-item,.batch-item,.dropzone-laser');
+        if (!target || target.disabled) return false;
+
+        if (target.matches('input,textarea,select')) {
+          try { target.focus({ preventScroll: true }); } catch { target.focus(); }
+        }
+
+        if (key === 'enter' && target.matches('input,textarea,select')) {
+          if (target.form && target.tagName !== 'TEXTAREA') {
+            if (typeof target.form.requestSubmit === 'function') target.form.requestSubmit();
+            else target.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+          } else {
+            target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+          }
+        } else {
+          target.click();
+        }
+        return true;
+      };
+
+      const sendEscape = () => {
+        const active = document.activeElement || document;
+        active.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
+        active.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
+      };
+
+      startBtn.onclick = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setStatus('Camera access is unavailable. Open this page on HTTPS or localhost in a supported browser.');
+          SHARLINE.toast('Camera requires HTTPS or localhost.', 'error');
+          return;
+        }
+        if (!window.Hands) {
+          setStatus('Hand-tracking library did not load. Check your connection and reload this page.');
+          SHARLINE.toast('MediaPipe Hands failed to load.', 'error');
+          return;
+        }
+
+        startBtn.disabled = true;
+        setStatus('Requesting camera permission…');
+        let pendingStream = null;
+        let pendingHands = null;
+        try {
+          pendingStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'user' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false
+          });
+          video.srcObject = pendingStream;
+          await video.play();
+
+          const hands = new window.Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+          });
+          pendingHands = hands;
+          hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.65
+          });
+
+          const cursor = document.createElement('div');
+          cursor.id = 'gesture-cursor';
+          cursor.setAttribute('aria-hidden', 'true');
+          cursor.style.cssText = 'position:fixed;left:0;top:0;width:28px;height:28px;border:2px solid #ff8a24;border-radius:50%;background:rgba(255,102,0,.2);box-shadow:0 0 18px rgba(255,102,0,.85);transform:translate(-50%,-50%);pointer-events:none;z-index:99999;opacity:.88;';
+          document.body.appendChild(cursor);
+
+          const runtime = {
+            active: true, stream, hands, cursor, raf: 0, processing: false,
+            x: null, y: null, lastScrollY: null, pinchStartedAt: 0,
+            pinchEnterSent: false, wasPinching: false, lastGesture: 'none',
+            lastActionAt: 0
+          };
+          SHARLINE.handControlRuntime = runtime;
+          pendingStream = null;
+          pendingHands = null;
+
+          hands.onResults((results) => {
+            if (!runtime.active) return;
+            const landmarks = results.multiHandLandmarks && results.multiHandLandmarks[0];
+            if (!landmarks) {
+              cursor.style.opacity = '.18';
+              runtime.lastScrollY = null;
+              runtime.lastGesture = 'none';
+              runtime.wasPinching = false;
+              runtime.pinchStartedAt = 0;
+              setStatus('Camera is on — show one hand in the frame.');
+              setPill('● FINDING HAND', 'ping-med');
+              return;
+            }
+
+            const indexTip = landmarks[8];
+            const thumbTip = landmarks[4];
+            const pointX = Math.max(0, Math.min(window.innerWidth, (1 - indexTip.x) * window.innerWidth));
+            const pointY = Math.max(0, Math.min(window.innerHeight, indexTip.y * window.innerHeight));
+            runtime.x = runtime.x === null ? pointX : runtime.x + (pointX - runtime.x) * 0.32;
+            runtime.y = runtime.y === null ? pointY : runtime.y + (pointY - runtime.y) * 0.32;
+            cursor.style.left = `${runtime.x}px`;
+            cursor.style.top = `${runtime.y}px`;
+            cursor.style.opacity = '.92';
+
+            const indexUp = landmarks[8].y < landmarks[6].y;
+            const middleUp = landmarks[12].y < landmarks[10].y;
+            const ringUp = landmarks[16].y < landmarks[14].y;
+            const pinkyUp = landmarks[20].y < landmarks[18].y;
+            const pinchDistance = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+            const pinching = pinchDistance < 0.055;
+            const isVSign = indexUp && middleUp && !ringUp && !pinkyUp && !pinching;
+            const isFist = !indexUp && !middleUp && !ringUp && !pinkyUp && !pinching;
+            const now = performance.now();
+
+            if (pinching && !runtime.wasPinching) {
+              runtime.pinchStartedAt = now;
+              runtime.pinchEnterSent = false;
+            }
+            if (pinching && runtime.pinchStartedAt && !runtime.pinchEnterSent && now - runtime.pinchStartedAt >= 700) {
+              const activated = activateAt(runtime.x, runtime.y, 'enter');
+              runtime.pinchEnterSent = true;
+              runtime.lastActionAt = now;
+              setStatus(activated ? 'Long pinch → Enter action sent to the page.' : 'Long pinch detected → no focused page control to activate.');
+              setPill('⌨ ENTER', 'ping-fast');
+            }
+            if (!pinching && runtime.wasPinching && runtime.pinchStartedAt) {
+              const heldFor = now - runtime.pinchStartedAt;
+              if (!runtime.pinchEnterSent && heldFor < 700 && now - runtime.lastActionAt > 300) {
+                const clicked = activateAt(runtime.x, runtime.y, 'click');
+                runtime.lastActionAt = now;
+                setStatus(clicked ? 'Quick pinch → clicked the page control.' : 'Quick pinch detected. Point at a button or control to click it.');
+                setPill('🖱 CLICK', 'ping-fast');
+              }
+              runtime.pinchStartedAt = 0;
+            }
+            runtime.wasPinching = pinching;
+
+            if (isVSign) {
+              if (runtime.lastScrollY !== null) {
+                const delta = (indexTip.y - runtime.lastScrollY) * window.innerHeight * 1.7;
+                if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+              }
+              runtime.lastScrollY = indexTip.y;
+              runtime.lastGesture = 'v-sign';
+              setStatus('V sign → move your hand up or down to scroll.');
+              setPill('↕ SCROLL', 'ping-fast');
+            } else {
+              runtime.lastScrollY = null;
+              if (isFist && runtime.lastGesture !== 'fist' && now - runtime.lastActionAt > 400) {
+                sendEscape();
+                runtime.lastActionAt = now;
+                setStatus('Fist → Escape shortcut sent to this page.');
+                setPill('⌨ ESC', 'ping-fast');
+              } else if (!pinching) {
+                setStatus('Hand tracked — move your index finger to point, then pinch to click.');
+                setPill('● TRACKING', 'ping-fast');
+              }
+              runtime.lastGesture = isFist ? 'fist' : (pinching ? 'pinch' : 'point');
+            }
+          });
+
+          placeholder.style.display = 'none';
+          stopBtn.disabled = false;
+          setStatus('Camera is on. Hand tracking is running locally in this tab.');
+          setPill('● TRACKING', 'ping-fast');
+          SHARLINE.toast('Hand gesture control is active.', 'success');
+
+          const tick = async () => {
+            if (!runtime.active) return;
+            if (!runtime.processing && video.readyState >= 2) {
+              runtime.processing = true;
+              try { await hands.send({ image: video }); }
+              catch (error) {
+                if (runtime.active) {
+                  setStatus(`Hand tracking error: ${error.message || 'Unable to process camera frame.'}`);
+                  setPill('● TRACKING ERROR', 'ping-slow');
+                }
+              } finally { runtime.processing = false; }
+            }
+            if (runtime.active) runtime.raf = requestAnimationFrame(tick);
+          };
+          runtime.raf = requestAnimationFrame(tick);
+        } catch (error) {
+          SHARLINE.stopHandControl();
+          if (pendingStream) pendingStream.getTracks().forEach(track => track.stop());
+          if (pendingHands && typeof pendingHands.close === 'function') {
+            try {
+              const closing = pendingHands.close();
+              if (closing && typeof closing.catch === 'function') closing.catch(() => {});
+            } catch (_) {}
+          }
+          video.srcObject = null;
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+          placeholder.style.display = 'flex';
+          setStatus(`Could not start camera: ${error.message || error}`);
+          setPill('● CAMERA ERROR', 'ping-slow');
+          SHARLINE.toast(`Camera could not start: ${error.message || error}`, 'error');
+        }
+      };
+
+      stopBtn.onclick = () => {
+        SHARLINE.stopHandControl();
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        placeholder.style.display = 'flex';
+        setStatus('Camera stopped. The camera stream has been disconnected.');
+        setPill('● CAMERA OFF', 'ping-med');
+      };
+    }
+
+    SHARLINE.handControlRuntime = null;
+    SHARLINE.stopHandControl = function() {
+      const runtime = SHARLINE.handControlRuntime;
+      if (!runtime) return;
+      runtime.active = false;
+      if (runtime.raf) cancelAnimationFrame(runtime.raf);
+      if (runtime.stream) runtime.stream.getTracks().forEach(track => track.stop());
+      if (runtime.hands && typeof runtime.hands.close === 'function') {
+        try {
+          const closing = runtime.hands.close();
+          if (closing && typeof closing.catch === 'function') closing.catch(() => {});
+        } catch (_) {}
+      }
+      if (runtime.cursor) runtime.cursor.remove();
+      const video = document.getElementById('hg-video');
+      if (video) video.srcObject = null;
+      const placeholder = document.getElementById('hg-camera-placeholder');
+      if (placeholder) placeholder.style.display = 'flex';
+      const status = document.getElementById('hg-status');
+      if (status) status.textContent = 'Camera stopped. The camera stream has been disconnected.';
+      const pill = document.getElementById('hg-state-pill');
+      if (pill) { pill.className = 'ping-badge ping-med'; pill.textContent = '● CAMERA OFF'; }
+      const start = document.getElementById('hg-start');
+      const stop = document.getElementById('hg-stop');
+      if (start) start.disabled = false;
+      if (stop) stop.disabled = true;
+      SHARLINE.handControlRuntime = null;
+    };
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) SHARLINE.stopHandControl();
+    });
+    window.addEventListener('pagehide', () => SHARLINE.stopHandControl());
+
+    /* ==========================================================================
+       ★ MASTER REGISTRY (39 VERIFIED MODULES) ★
        ========================================================================== */
     const TOOLS = [
       { id: 'ai-ocr', name: 'OCR Grimoire Reader', cat: 'ai', desc: 'Scan document photos or upload images to transcribe text locally.', render: renderAiOcrScanner, icon: '👁️' },
@@ -2737,6 +3050,7 @@
       { id: 'svg-editor', name: 'SVG Vector Visualizer', cat: 'dev', desc: 'Live vector code editor and visual preview.', render: renderSvgEditor, icon: '📐' },
       { id: 'sec-sandbox', name: 'Web Security Sandbox', cat: 'dev', desc: 'Payload encoder, XSS sanitizer, and Shannon entropy analyzer.', render: renderSecuritySandbox, icon: '🛡️' },
 
+      { id: 'hand-control', name: 'Hand Gesture Control', cat: 'productivity', desc: 'Use your webcam hand gestures as an on-page mouse pointer and keyboard shortcut controller.', render: renderHandGestureControl, icon: '🖐️' },
       { id: 'net-diag', name: 'Multi-Node Latency Probe', cat: 'productivity', desc: 'Live ping probes to 6+ geographically dispersed global edge PoPs.', render: renderNetworkDiagnostics, icon: '🌐' },
       { id: 'crypto-vault', name: 'Hardware Encrypted Crypt', cat: 'productivity', desc: 'Secure local secret manager backed by 256-bit AES-GCM.', render: renderEncryptedVault, icon: '🔐' },
       { id: 'adv-calc', name: 'Scientific Calculator', cat: 'productivity', desc: 'Mathematical expression evaluator.', render: renderCalculator, icon: '🖩' },
@@ -2751,6 +3065,7 @@
        ★ ROUTING & INTERFACE SYSTEM ★
        ========================================================================== */
     function switchView(viewId) {
+      SHARLINE.stopHandControl();
       document.querySelectorAll('#app-root > section').forEach(s => {
         s.classList.remove('view-active'); s.classList.add('view-hidden');
       });
